@@ -14,16 +14,15 @@ let isForecastChartInitialized = false; // Penanda untuk mencegah render ulang
 
 // --- FUNGSI UTAMA ---
 export function initSimulation() {
-    // Event listener untuk Vendor...
+    console.log("Platform Simulasi diinisialisasi..."); // Pesan untuk debugging
+
+    // --- Alur Kerja Unggah File ---
     const fileInput = document.getElementById('vendor-file-input');
     const uploadBtn = document.getElementById('upload-file-btn');
-
+    
     fileInput.addEventListener('change', () => {
-        if (fileInput.files.length > 0) {
-            uploadBtn.classList.remove('hidden');
-        } else {
-            uploadBtn.classList.add('hidden');
-        }
+        if (fileInput.files.length > 0) uploadBtn.classList.remove('hidden');
+        else uploadBtn.classList.add('hidden');
     });
 
     uploadBtn.addEventListener('click', () => {
@@ -31,32 +30,30 @@ export function initSimulation() {
         uploadBtn.classList.add('hidden');
     });
 
+    // Event listener lainnya...
     document.getElementById('analyze-vendor-btn').addEventListener('click', analyzeVendors);
     document.querySelector('#vendorTable tbody').addEventListener('change', handleVendorSelection);
     document.getElementById('simulation-panel').addEventListener('click', (e) => {
-        if (e.target && e.target.id === 'run-simulation-btn') runSourcingSimulation();
+        if (e.target.id === 'run-simulation-btn') runSourcingSimulation();
     });
     document.getElementById('history-list').addEventListener('click', (e) => {
-        if (e.target && e.target.dataset.fileName) {
+        if (e.target.dataset.fileName) {
             e.preventDefault();
             loadDataFromFile(e.target.dataset.fileName);
         }
     });
-
-    // Inisialisasi modul lain
-    setupAutomationTooltips(); // Otomatisasi bisa di-init di awal
     document.getElementById('update-forecast-chart-btn').addEventListener('click', updateForecastChartWithUserData);
-    
+
+    setupAutomationTooltips();
     renderVendorTable();
     renderSimulationPanel();
     updateDashboard();
 }
 
-// Fungsi baru yang dipanggil dari main.js
+// Fungsi ini dipanggil dari main.js setiap kali tab diganti
 export function handleTabClick(tabId) {
     if (tabId === 'forecast' && !isForecastChartInitialized) {
         initForecastChart();
-        isForecastChartInitialized = true;
     }
 }
 
@@ -69,23 +66,25 @@ function updateForecastChartWithUserData() {
     } else {
         const newData = userInput.split(',').map(item => parseFloat(item.trim())).filter(num => !isNaN(num));
         if (newData.length === 0) {
-            alert('Format data tidak valid. Pastikan Anda menggunakan angka yang dipisahkan koma.');
+            alert('Format data tidak valid.');
             return;
         }
         currentSalesData = newData;
     }
     
-    isForecastChartInitialized = false; // Reset agar bisa di-render ulang
+    // Hancurkan chart lama dan render ulang
+    if (forecastChart) forecastChart.destroy();
+    isForecastChartInitialized = false; // Izinkan render ulang saat tab diklik
     initForecastChart();
-    isForecastChartInitialized = true;
 }
 
 function initForecastChart() {
-    if (forecastChart) {
-        forecastChart.destroy();
-    }
+    if (isForecastChartInitialized) return; // Jangan render jika sudah ada
+
     const ctx = document.getElementById('forecastChart');
-    if (!ctx) return; // Tambahan pengaman
+    if (!ctx) return;
+
+    if (forecastChart) forecastChart.destroy();
 
     const traditionalForecast = currentSalesData.map(s => s * (1 + (Math.random() - 0.5) * 0.4));
     const forecastLabels = Array.from({ length: currentSalesData.length }, (_, i) => `Periode ${i + 1}`);
@@ -97,20 +96,23 @@ function initForecastChart() {
         type: 'line',
         data: {
             labels: forecastLabels,
-            datasets: [{
-                label: 'Penjualan Aktual',
-                data: currentSalesData,
-                borderColor: 'rgb(59, 130, 246)',
-                backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                fill: true,
-                tension: 0.3
-            }, {
-                label: 'Peramalan Tradisional',
-                data: traditionalForecast,
-                borderColor: 'rgb(239, 68, 68)',
-                borderDash: [5, 5],
-                tension: 0.3
-            }]
+            datasets: [
+                {
+                    label: 'Penjualan Aktual',
+                    data: currentSalesData,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                },
+                {
+                    label: 'Peramalan Tradisional',
+                    data: traditionalForecast,
+                    borderColor: 'rgb(239, 68, 68)',
+                    borderDash: [5, 5],
+                    tension: 0.3
+                }
+            ]
         },
         options: {
             responsive: true,
@@ -119,9 +121,7 @@ function initForecastChart() {
                 y: { ticks: { color: textColor }, grid: { color: gridColor } },
                 x: { ticks: { color: textColor }, grid: { color: gridColor } }
             },
-            plugins: {
-                legend: { labels: { color: textColor } }
-            }
+            plugins: { legend: { labels: { color: textColor } } }
         }
     });
 
@@ -129,14 +129,14 @@ function initForecastChart() {
     document.getElementById('accuracy-ai').textContent = '-';
     
     const applyAiBtn = document.getElementById('apply-ai-btn');
-    // Hapus dan tambahkan ulang event listener untuk mencegah duplikasi
     const newApplyAiBtn = applyAiBtn.cloneNode(true);
     applyAiBtn.parentNode.replaceChild(newApplyAiBtn, applyAiBtn);
     newApplyAiBtn.addEventListener('click', applyAiForecast);
+
+    isForecastChartInitialized = true;
 }
 
 function applyAiForecast() {
-    // Cek jika dataset AI sudah ada untuk mencegah penambahan ganda
     if (forecastChart.data.datasets.some(d => d.label === 'Peramalan AI')) return;
 
     const aiForecast = currentSalesData.map(s => s * (1 + (Math.random() - 0.5) * 0.1));
@@ -156,6 +156,7 @@ function applyAiForecast() {
 }
 
 // ... SISA FILE simulation.js TETAP SAMA SEPERTI SEBELUMNYA ...
+// (Fungsi setupAutomationTooltips, handleFileUpload, loadHistory, loadDataFromFile, processVendorData, dll.)
 
 function setupAutomationTooltips() {
     const steps = document.querySelectorAll('.automation-step');
@@ -178,7 +179,6 @@ function setupAutomationTooltips() {
         });
     });
 }
-
 async function handleFileUpload(file) {
     if (!file) {
         alert("Silakan pilih file terlebih dahulu.");
@@ -200,7 +200,7 @@ async function handleFileUpload(file) {
     }
 }
 
-async function loadHistory() {
+export async function loadHistory() {
     const list = document.getElementById('history-list');
     list.innerHTML = `<p class="text-sm text-slate-500">Memuat riwayat...</p>`;
     try {
@@ -217,7 +217,6 @@ async function loadHistory() {
         list.innerHTML = `<p class="text-sm text-red-500">Gagal memuat riwayat. Pastikan server backend berjalan.</p>`;
     }
 }
-
 async function loadDataFromFile(fileName) {
     try {
         const response = await fetch(`${API_URL_BASE}/data/${fileName}`);
@@ -255,7 +254,6 @@ async function loadDataFromFile(fileName) {
         alert(`Gagal memuat data dari file: ${fileName}. Pastikan server backend berjalan.`);
     }
 }
-
 function processVendorData(rawData) {
     try {
         if (!rawData || rawData.length === 0) {
