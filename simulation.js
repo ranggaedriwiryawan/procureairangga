@@ -9,15 +9,16 @@ let simulationVendors = [];
 let lastSimulationResult = null;
 let activeSessionFile = 'Tidak ada';
 let forecastChart;
+
+// Variabel baru untuk data peramalan yang dinamis (DIPULIHKAN)
 let currentSalesData = [...defaultHistoricalSales];
 
 // --- FUNGSI UTAMA ---
 export function initSimulation() {
-    // --- Alur Kerja Unggah File yang Baru ---
+    // Event listener untuk Vendor...
     const fileInput = document.getElementById('vendor-file-input');
     const uploadBtn = document.getElementById('upload-file-btn');
 
-    // 1. Saat file dipilih, hanya tampilkan tombol "Kirim"
     fileInput.addEventListener('change', () => {
         if (fileInput.files.length > 0) {
             uploadBtn.classList.remove('hidden');
@@ -26,13 +27,11 @@ export function initSimulation() {
         }
     });
 
-    // 2. Saat tombol "Kirim" diklik, jalankan proses unggah
     uploadBtn.addEventListener('click', () => {
         handleFileUpload(fileInput.files[0]);
-        uploadBtn.classList.add('hidden'); // Sembunyikan lagi setelah diklik
+        uploadBtn.classList.add('hidden');
     });
 
-    // Event listener lainnya...
     document.getElementById('analyze-vendor-btn').addEventListener('click', analyzeVendors);
     document.querySelector('#vendorTable tbody').addEventListener('change', handleVendorSelection);
     document.getElementById('simulation-panel').addEventListener('click', (e) => {
@@ -54,6 +53,118 @@ export function initSimulation() {
     renderSimulationPanel();
     updateDashboard();
 }
+
+// --- FUNGSI MODUL PERAMALAN (DIPULIHKAN & DIPERBAIKI) ---
+function updateForecastChartWithUserData() {
+    const userInput = document.getElementById('user-forecast-data').value;
+    
+    if (!userInput.trim()) {
+        currentSalesData = [...defaultHistoricalSales];
+    } else {
+        const newData = userInput.split(',').map(item => parseFloat(item.trim())).filter(num => !isNaN(num));
+        if (newData.length === 0) {
+            alert('Format data tidak valid. Pastikan Anda menggunakan angka yang dipisahkan koma.');
+            return;
+        }
+        currentSalesData = newData;
+    }
+    
+    initForecastChart();
+}
+
+function initForecastChart() {
+    if (forecastChart) {
+        forecastChart.destroy();
+    }
+    const ctx = document.getElementById('forecastChart').getContext('2d');
+    
+    const traditionalForecast = currentSalesData.map(s => s * (1 + (Math.random() - 0.5) * 0.4));
+    const forecastLabels = Array.from({ length: currentSalesData.length }, (_, i) => `Periode ${i + 1}`);
+
+    const gridColor = document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const textColor = document.documentElement.classList.contains('dark') ? 'rgb(203, 213, 225)' : 'rgb(71, 85, 105)';
+
+    forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: forecastLabels,
+            datasets: [{
+                label: 'Penjualan Aktual',
+                data: currentSalesData,
+                borderColor: 'rgb(59, 130, 246)',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                fill: true,
+                tension: 0.3
+            }, {
+                label: 'Peramalan Tradisional',
+                data: traditionalForecast,
+                borderColor: 'rgb(239, 68, 68)',
+                borderDash: [5, 5],
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { ticks: { color: textColor }, grid: { color: gridColor } },
+                x: { ticks: { color: textColor }, grid: { color: gridColor } }
+            },
+            plugins: {
+                legend: { labels: { color: textColor } }
+            }
+        }
+    });
+
+    document.getElementById('accuracy-traditional').textContent = '78.5';
+    document.getElementById('accuracy-ai').textContent = '-';
+    
+    const applyAiBtn = document.getElementById('apply-ai-btn');
+    const newApplyAiBtn = applyAiBtn.cloneNode(true);
+    applyAiBtn.parentNode.replaceChild(newApplyAiBtn, applyAiBtn);
+    newApplyAiBtn.addEventListener('click', applyAiForecast, { once: true });
+}
+
+function applyAiForecast() {
+    const aiForecast = currentSalesData.map(s => s * (1 + (Math.random() - 0.5) * 0.1));
+    
+    forecastChart.data.datasets.push({
+        label: 'Peramalan AI',
+        data: aiForecast,
+        borderColor: 'rgb(16, 185, 129)',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        fill: true,
+        tension: 0.3
+    });
+    forecastChart.update();
+    document.getElementById('accuracy-ai').textContent = '96.2';
+    this.disabled = true;
+    this.classList.add('opacity-50', 'cursor-not-allowed');
+}
+
+// --- FUNGSI MODUL OTOMATISASI (DIPULIHKAN) ---
+function setupAutomationTooltips() {
+    const steps = document.querySelectorAll('.automation-step');
+    const tooltip = document.getElementById('automation-tooltip');
+
+    steps.forEach(step => {
+        step.addEventListener('mouseenter', (event) => {
+            const stepNumber = event.currentTarget.dataset.step;
+            tooltip.textContent = automationSteps[stepNumber];
+            tooltip.classList.remove('hidden');
+        });
+        
+        step.addEventListener('mousemove', (event) => {
+            tooltip.style.left = `${event.pageX + 15}px`;
+            tooltip.style.top = `${event.pageY + 15}px`;
+        });
+
+        step.addEventListener('mouseleave', () => {
+            tooltip.classList.add('hidden');
+        });
+    });
+}
+
 
 // --- FUNGSI INTERAKSI BACKEND & RIWAYAT ---
 async function handleFileUpload(file) {
@@ -77,11 +188,7 @@ async function handleFileUpload(file) {
     }
 }
 
-// ... SISA FILE simulation.js TETAP SAMA SEPERTI SEBELUMNYA ...
-// (loadHistory, loadDataFromFile, processVendorData, dan fungsi lainnya tidak perlu diubah)
-
-
-export async function loadHistory() {
+async function loadHistory() {
     const list = document.getElementById('history-list');
     list.innerHTML = `<p class="text-sm text-slate-500">Memuat riwayat...</p>`;
     try {
@@ -142,14 +249,10 @@ function processVendorData(rawData) {
         if (!rawData || rawData.length === 0) {
             throw new Error("File yang diunggah kosong atau formatnya tidak bisa dibaca.");
         }
-
-        console.log("Data mentah dari file:", rawData);
-
         const expectedHeaders = [
             'nama vendor', 'tgl pesan', 'tgl kirim janji', 
             'tgl kirim aktual', 'kualitas lolos', 'harga'
         ];
-
         const headerMapping = {};
         const firstRow = rawData[0];
         const actualHeaders = Object.keys(firstRow);
@@ -162,9 +265,6 @@ function processVendorData(rawData) {
                 throw new Error(`Kolom wajib '${expectedHeader}' tidak ditemukan di file Anda.`);
             }
         });
-
-        console.log("Pemetaan Header Berhasil:", headerMapping);
-
         const vendorMap = new Map();
         rawData.forEach((row, index) => {
             const vendorName = row[headerMapping['nama vendor']];
@@ -173,11 +273,9 @@ function processVendorData(rawData) {
                 console.warn(`Melewatkan baris ke-${index + 2} karena Nama Vendor kosong.`);
                 return;
             }
-
             if (!vendorMap.has(vendorName)) {
                 vendorMap.set(vendorName, { id: vendorName, name: vendorName, transactions: [] });
             }
-
             const transaction = {
                 tglPesan: row[headerMapping['tgl pesan']],
                 tglKirimJanji: row[headerMapping['tgl kirim janji']],
@@ -185,29 +283,21 @@ function processVendorData(rawData) {
                 kualitasLolos: String(row[headerMapping['kualitas lolos']]).trim().toLowerCase() === 'true',
                 harga: parseFloat(row[headerMapping['harga']]) || 0
             };
-
             if (!transaction.tglPesan || !transaction.tglKirimJanji || !transaction.tglKirimAktual) {
                  console.warn(`Melewatkan transaksi untuk ${vendorName} di baris ke-${index + 2} karena data tanggal tidak lengkap.`);
                  return;
             }
-
             vendorMap.get(vendorName).transactions.push(transaction);
         });
-
         userVendorData = Array.from(vendorMap.values());
-
         if (userVendorData.length === 0) {
             throw new Error("Tidak ada data vendor valid yang dapat diproses. Pastikan file terisi dengan benar dan sesuai format.");
         }
-
-        console.log("Data Vendor yang berhasil diproses:", userVendorData);
-        
         renderVendorTable();
         document.getElementById('analyze-vendor-btn').disabled = userVendorData.length === 0;
         simulationVendors = [];
         renderSimulationPanel();
         updateDashboard();
-
     } catch (error) {
         console.error("Kesalahan di processVendorData:", error);
         alert(`Gagal memproses data: ${error.message}`);
@@ -349,8 +439,3 @@ function updateDashboard() {
 function vendorWidgetHTML(vendor) {
     return `<div class="flex justify-between items-center text-sm p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><span class="font-medium text-slate-700 dark:text-slate-300">${vendor.name}</span><span class="font-bold text-blue-500">${vendor.score.toFixed(1)}</span></div>`;
 }
-
-function initForecastChart() { /* ... (TETAP SAMA) ... */ }
-function updateForecastChartWithUserData() { /* ... (TETAP SAMA) ... */ }
-function applyAiForecast() { /* ... (TETAP SAMA) ... */ }
-function setupAutomationTooltips() { /* ... (TETAP SAMA) ... */ }
