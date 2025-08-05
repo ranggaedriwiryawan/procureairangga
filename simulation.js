@@ -13,8 +13,26 @@ let currentSalesData = [...defaultHistoricalSales];
 
 // --- FUNGSI UTAMA ---
 export function initSimulation() {
-    // Event listener...
-    document.getElementById('vendor-file-input').addEventListener('change', (e) => handleFileUpload(e));
+    // --- Alur Kerja Unggah File yang Baru ---
+    const fileInput = document.getElementById('vendor-file-input');
+    const uploadBtn = document.getElementById('upload-file-btn');
+
+    // 1. Saat file dipilih, hanya tampilkan tombol "Kirim"
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            uploadBtn.classList.remove('hidden');
+        } else {
+            uploadBtn.classList.add('hidden');
+        }
+    });
+
+    // 2. Saat tombol "Kirim" diklik, jalankan proses unggah
+    uploadBtn.addEventListener('click', () => {
+        handleFileUpload(fileInput.files[0]);
+        uploadBtn.classList.add('hidden'); // Sembunyikan lagi setelah diklik
+    });
+
+    // Event listener lainnya...
     document.getElementById('analyze-vendor-btn').addEventListener('click', analyzeVendors);
     document.querySelector('#vendorTable tbody').addEventListener('change', handleVendorSelection);
     document.getElementById('simulation-panel').addEventListener('click', (e) => {
@@ -38,9 +56,11 @@ export function initSimulation() {
 }
 
 // --- FUNGSI INTERAKSI BACKEND & RIWAYAT ---
-async function handleFileUpload(event) {
-    const file = event.target.files[0];
-    if (!file) return;
+async function handleFileUpload(file) {
+    if (!file) {
+        alert("Silakan pilih file terlebih dahulu.");
+        return;
+    }
     const formData = new FormData();
     formData.append('vendorFile', file);
     try {
@@ -56,6 +76,10 @@ async function handleFileUpload(event) {
         alert('Gagal mengunggah file. Pastikan server backend berjalan.');
     }
 }
+
+// ... SISA FILE simulation.js TETAP SAMA SEPERTI SEBELUMNYA ...
+// (loadHistory, loadDataFromFile, processVendorData, dan fungsi lainnya tidak perlu diubah)
+
 
 export async function loadHistory() {
     const list = document.getElementById('history-list');
@@ -113,7 +137,6 @@ async function loadDataFromFile(fileName) {
     }
 }
 
-// --- FUNGSI ANALISIS & SIMULASI (DIPERBAIKI) ---
 function processVendorData(rawData) {
     try {
         if (!rawData || rawData.length === 0) {
@@ -122,13 +145,11 @@ function processVendorData(rawData) {
 
         console.log("Data mentah dari file:", rawData);
 
-        // Definisikan nama kolom yang diharapkan (dalam huruf kecil, tanpa spasi)
         const expectedHeaders = [
             'nama vendor', 'tgl pesan', 'tgl kirim janji', 
             'tgl kirim aktual', 'kualitas lolos', 'harga'
         ];
 
-        // Buat pemetaan dari header yang diharapkan ke nama header aktual di file
         const headerMapping = {};
         const firstRow = rawData[0];
         const actualHeaders = Object.keys(firstRow);
@@ -148,7 +169,6 @@ function processVendorData(rawData) {
         rawData.forEach((row, index) => {
             const vendorName = row[headerMapping['nama vendor']];
             
-            // Lompati baris jika nama vendor kosong
             if (!vendorName || !vendorName.trim()) {
                 console.warn(`Melewatkan baris ke-${index + 2} karena Nama Vendor kosong.`);
                 return;
@@ -166,7 +186,6 @@ function processVendorData(rawData) {
                 harga: parseFloat(row[headerMapping['harga']]) || 0
             };
 
-            // Validasi data transaksi sebelum ditambahkan
             if (!transaction.tglPesan || !transaction.tglKirimJanji || !transaction.tglKirimAktual) {
                  console.warn(`Melewatkan transaksi untuk ${vendorName} di baris ke-${index + 2} karena data tanggal tidak lengkap.`);
                  return;
@@ -183,7 +202,6 @@ function processVendorData(rawData) {
 
         console.log("Data Vendor yang berhasil diproses:", userVendorData);
         
-        // Reset dan Render Ulang Tampilan
         renderVendorTable();
         document.getElementById('analyze-vendor-btn').disabled = userVendorData.length === 0;
         simulationVendors = [];
@@ -193,15 +211,11 @@ function processVendorData(rawData) {
     } catch (error) {
         console.error("Kesalahan di processVendorData:", error);
         alert(`Gagal memproses data: ${error.message}`);
-        // Reset ke keadaan awal jika terjadi error
         userVendorData = [];
         renderVendorTable();
         updateDashboard();
     }
 }
-
-// ... SISA FILE simulation.js TETAP SAMA SEPERTI SEBELUMNYA ...
-// (Fungsi analyzeVendors, runSourcingSimulation, renderVendorTable, dll. tidak perlu diubah)
 
 function analyzeVendors() {
     if (userVendorData.length === 0) return;
