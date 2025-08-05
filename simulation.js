@@ -1,9 +1,7 @@
 // simulation.js
-
-// Impor data statis
 import { historicalSales as defaultHistoricalSales, automationSteps } from './data.js';
 
-// Variabel global
+// const API_URL_BASE = 'http://localhost:3000'; // TIDAK DIPAKAI LAGI
 let userVendorData = [];
 let simulationVendors = [];
 let lastSimulationResult = null;
@@ -14,9 +12,8 @@ let isForecastChartInitialized = false;
 
 // --- FUNGSI UTAMA ---
 export function initSimulation() {
-    console.log("Platform Simulasi diinisialisasi (Mode LocalStorage)...");
+    console.log("Platform Simulasi diinisialisasi...");
 
-    // Event listener
     const fileInput = document.getElementById('vendor-file-input');
     const uploadBtn = document.getElementById('upload-file-btn');
     
@@ -28,9 +25,10 @@ export function initSimulation() {
     uploadBtn.addEventListener('click', () => {
         handleFileUpload(fileInput.files[0]);
         uploadBtn.classList.add('hidden');
-        fileInput.value = ''; // Reset input agar bisa upload file yang sama lagi
+        fileInput.value = ''; // Reset input file
     });
 
+    // Event listener lainnya
     document.getElementById('analyze-vendor-btn').addEventListener('click', analyzeVendors);
     document.querySelector('#vendorTable tbody').addEventListener('change', handleVendorSelection);
     document.getElementById('simulation-panel').addEventListener('click', (e) => {
@@ -56,39 +54,26 @@ export function handleTabClick(tabId) {
     }
 }
 
-// --- FUNGSI INTERAKSI RIWAYAT & FILE (LOGIKA localStorage BARU) ---
+// --- FUNGSI INTERAKSI RIWAYAT & FILE (DIPERBARUI) ---
 function handleFileUpload(file) {
     if (!file) return;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        try {
-            const fileContent = e.target.result;
-            // Buat nama file unik untuk kunci localStorage
-            const fileNameKey = `procureai_file_${Date.now()}-${file.name}`;
-            const fileNameDisplay = file.name;
+        const fileContent = e.target.result;
+        // Simpan file ke localStorage
+        const fileName = `${Date.now()}-${file.name}`;
+        localStorage.setItem(`procureai_file_${fileName}`, fileContent);
+        
+        // Perbarui daftar riwayat
+        let history = JSON.parse(localStorage.getItem('procureai_history') || '[]');
+        history.unshift(fileName); // Tambah ke awal
+        localStorage.setItem('procureai_history', JSON.stringify(history));
 
-            // Simpan konten file ke localStorage
-            localStorage.setItem(fileNameKey, fileContent);
-            
-            // Dapatkan daftar riwayat, atau buat baru jika belum ada
-            let history = JSON.parse(localStorage.getItem('procureai_history') || '[]');
-            // Tambahkan file baru ke awal riwayat (key dan nama tampilan)
-            history.unshift({ key: fileNameKey, display: fileNameDisplay });
-            // Batasi riwayat hingga 10 entri terakhir
-            if (history.length > 10) history.pop();
-            // Simpan riwayat yang diperbarui
-            localStorage.setItem('procureai_history', JSON.stringify(history));
-
-            alert('File berhasil diproses! Memuat data...');
-            loadHistory(); // Muat ulang daftar riwayat di UI
-            loadDataFromFile(fileNameKey); // Langsung muat data dari file yang baru disimpan
-        } catch (error) {
-            console.error("Error saving to localStorage:", error);
-            alert("Gagal menyimpan file ke riwayat. Mungkin penyimpanan browser Anda penuh.");
-        }
+        alert('File berhasil diproses! Memuat data...');
+        loadHistory();
+        loadDataFromFile(fileName);
     };
-    // Baca sebagai binary string agar konsisten dengan XLSX.js
     reader.readAsBinaryString(file);
 }
 
@@ -99,26 +84,23 @@ export function loadHistory() {
     if (history.length === 0) {
         list.innerHTML = `<p class="text-sm text-slate-500">Belum ada riwayat unggahan.</p>`;
     } else {
-        list.innerHTML = history.map(item => 
-            `<a href="#" data-file-name="${item.key}" class="block text-sm text-blue-600 dark:text-blue-400 hover:underline truncate">${item.display}</a>`
+        list.innerHTML = history.map(file => 
+            `<a href="#" data-file-name="${file}" class="block text-sm text-blue-600 dark:text-blue-400 hover:underline truncate">${file.split('-').slice(1).join('-')}</a>`
         ).join('');
     }
 }
 
-function loadDataFromFile(fileNameKey) {
+function loadDataFromFile(fileName) {
     try {
-        const data = localStorage.getItem(fileNameKey);
-        if (!data) throw new Error("File tidak ditemukan di riwayat penyimpanan browser.");
+        const data = localStorage.getItem(`procureai_file_${fileName}`);
+        if (!data) throw new Error("File tidak ditemukan di riwayat.");
 
         let parsedData;
-        // Kita perlu nama asli untuk cek ekstensi
-        const displayName = JSON.parse(localStorage.getItem('procureai_history')).find(h => h.key === fileNameKey).display;
-
-        if (displayName.toLowerCase().endsWith('.csv')) {
+        if (fileName.toLowerCase().endsWith('.csv')) {
             const parseResult = Papa.parse(data, { header: true, skipEmptyLines: true });
             if (parseResult.errors.length > 0) throw new Error("Gagal mem-parsing file CSV.");
             parsedData = parseResult.data;
-        } else if (displayName.toLowerCase().endsWith('.xlsx')) {
+        } else if (fileName.toLowerCase().endsWith('.xlsx')) {
             const workbook = XLSX.read(data, { type: 'binary' });
             const sheetName = workbook.SheetNames[0];
             const sheet = workbook.Sheets[sheetName];
@@ -127,17 +109,16 @@ function loadDataFromFile(fileNameKey) {
             throw new Error("Format file tidak didukung.");
         }
         
-        activeSessionFile = displayName;
+        activeSessionFile = fileName.split('-').slice(1).join('-');
         processVendorData(parsedData);
     } catch (error) {
-        console.error('Error loading data from localStorage:', error);
+        console.error('Error loading data from history:', error);
         alert(`Gagal memuat data dari riwayat: ${error.message}`);
     }
 }
 
-// --- SISA FILE (Fungsi Analisis, Simulasi, Render, Dashboard) TIDAK BERUBAH ---
-// (processVendorData, analyzeVendors, runSourcingSimulation, dll.)
 
+// --- SISA FUNGSI (processVendorData, analyzeVendors, dll.) TIDAK BERUBAH ---
 function processVendorData(rawData) {
     try {
         if (!rawData || rawData.length === 0) {
