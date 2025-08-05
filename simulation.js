@@ -1,22 +1,22 @@
 // simulation.js
 
-// Impor data statis
+// Impor data statis untuk modul yang dipulihkan
 import { historicalSales as defaultHistoricalSales, automationSteps } from './data.js';
 
-// Variabel global
+const API_URL_BASE = 'http://localhost:3000';
 let userVendorData = [];
 let simulationVendors = [];
 let lastSimulationResult = null;
 let activeSessionFile = 'Tidak ada';
 let forecastChart;
 let currentSalesData = [...defaultHistoricalSales];
-let isForecastChartInitialized = false;
+let isForecastChartInitialized = false; // Penanda untuk mencegah render ulang
 
 // --- FUNGSI UTAMA ---
 export function initSimulation() {
-    console.log("Platform Simulasi diinisialisasi (Mode LocalStorage)...");
+    console.log("Platform Simulasi diinisialisasi..."); // Pesan untuk debugging
 
-    // Event listener
+    // --- Alur Kerja Unggah File ---
     const fileInput = document.getElementById('vendor-file-input');
     const uploadBtn = document.getElementById('upload-file-btn');
     
@@ -28,9 +28,9 @@ export function initSimulation() {
     uploadBtn.addEventListener('click', () => {
         handleFileUpload(fileInput.files[0]);
         uploadBtn.classList.add('hidden');
-        fileInput.value = ''; // Reset input agar bisa upload file yang sama lagi
     });
 
+    // Event listener lainnya...
     document.getElementById('analyze-vendor-btn').addEventListener('click', analyzeVendors);
     document.querySelector('#vendorTable tbody').addEventListener('change', handleVendorSelection);
     document.getElementById('simulation-panel').addEventListener('click', (e) => {
@@ -50,94 +50,212 @@ export function initSimulation() {
     updateDashboard();
 }
 
+// Fungsi ini dipanggil dari main.js setiap kali tab diganti
 export function handleTabClick(tabId) {
     if (tabId === 'forecast' && !isForecastChartInitialized) {
         initForecastChart();
     }
 }
 
-// --- FUNGSI INTERAKSI RIWAYAT & FILE (LOGIKA localStorage BARU) ---
-function handleFileUpload(file) {
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        try {
-            const fileContent = e.target.result;
-            // Buat nama file unik untuk kunci localStorage
-            const fileNameKey = `procureai_file_${Date.now()}-${file.name}`;
-            const fileNameDisplay = file.name;
-
-            // Simpan konten file ke localStorage
-            localStorage.setItem(fileNameKey, fileContent);
-            
-            // Dapatkan daftar riwayat, atau buat baru jika belum ada
-            let history = JSON.parse(localStorage.getItem('procureai_history') || '[]');
-            // Tambahkan file baru ke awal riwayat (key dan nama tampilan)
-            history.unshift({ key: fileNameKey, display: fileNameDisplay });
-            // Batasi riwayat hingga 10 entri terakhir
-            if (history.length > 10) history.pop();
-            // Simpan riwayat yang diperbarui
-            localStorage.setItem('procureai_history', JSON.stringify(history));
-
-            alert('File berhasil diproses! Memuat data...');
-            loadHistory(); // Muat ulang daftar riwayat di UI
-            loadDataFromFile(fileNameKey); // Langsung muat data dari file yang baru disimpan
-        } catch (error) {
-            console.error("Error saving to localStorage:", error);
-            alert("Gagal menyimpan file ke riwayat. Mungkin penyimpanan browser Anda penuh.");
-        }
-    };
-    // Baca sebagai binary string agar konsisten dengan XLSX.js
-    reader.readAsBinaryString(file);
-}
-
-export function loadHistory() {
-    const list = document.getElementById('history-list');
-    const history = JSON.parse(localStorage.getItem('procureai_history') || '[]');
+// --- FUNGSI MODUL PERAMALAN (DIPERBAIKI) ---
+function updateForecastChartWithUserData() {
+    const userInput = document.getElementById('user-forecast-data').value;
     
-    if (history.length === 0) {
-        list.innerHTML = `<p class="text-sm text-slate-500">Belum ada riwayat unggahan.</p>`;
+    if (!userInput.trim()) {
+        currentSalesData = [...defaultHistoricalSales];
     } else {
-        list.innerHTML = history.map(item => 
-            `<a href="#" data-file-name="${item.key}" class="block text-sm text-blue-600 dark:text-blue-400 hover:underline truncate">${item.display}</a>`
-        ).join('');
-    }
-}
-
-function loadDataFromFile(fileNameKey) {
-    try {
-        const data = localStorage.getItem(fileNameKey);
-        if (!data) throw new Error("File tidak ditemukan di riwayat penyimpanan browser.");
-
-        let parsedData;
-        // Kita perlu nama asli untuk cek ekstensi
-        const displayName = JSON.parse(localStorage.getItem('procureai_history')).find(h => h.key === fileNameKey).display;
-
-        if (displayName.toLowerCase().endsWith('.csv')) {
-            const parseResult = Papa.parse(data, { header: true, skipEmptyLines: true });
-            if (parseResult.errors.length > 0) throw new Error("Gagal mem-parsing file CSV.");
-            parsedData = parseResult.data;
-        } else if (displayName.toLowerCase().endsWith('.xlsx')) {
-            const workbook = XLSX.read(data, { type: 'binary' });
-            const sheetName = workbook.SheetNames[0];
-            const sheet = workbook.Sheets[sheetName];
-            parsedData = XLSX.utils.sheet_to_json(sheet);
-        } else {
-            throw new Error("Format file tidak didukung.");
+        const newData = userInput.split(',').map(item => parseFloat(item.trim())).filter(num => !isNaN(num));
+        if (newData.length === 0) {
+            alert('Format data tidak valid.');
+            return;
         }
-        
-        activeSessionFile = displayName;
-        processVendorData(parsedData);
-    } catch (error) {
-        console.error('Error loading data from localStorage:', error);
-        alert(`Gagal memuat data dari riwayat: ${error.message}`);
+        currentSalesData = newData;
     }
+    
+    // Hancurkan chart lama dan render ulang
+    if (forecastChart) forecastChart.destroy();
+    isForecastChartInitialized = false; // Izinkan render ulang saat tab diklik
+    initForecastChart();
 }
 
-// --- SISA FILE (Fungsi Analisis, Simulasi, Render, Dashboard) TIDAK BERUBAH ---
-// (processVendorData, analyzeVendors, runSourcingSimulation, dll.)
+function initForecastChart() {
+    if (isForecastChartInitialized) return; // Jangan render jika sudah ada
 
+    const canvas = document.getElementById('forecastChart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d'); // <-- INI PERBAIKAN PENTING
+    if (!ctx) return;
+
+    if (forecastChart) forecastChart.destroy();
+
+    const traditionalForecast = currentSalesData.map(s => s * (1 + (Math.random() - 0.5) * 0.4));
+    const forecastLabels = Array.from({ length: currentSalesData.length }, (_, i) => `Periode ${i + 1}`);
+
+    const gridColor = document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
+    const textColor = document.documentElement.classList.contains('dark') ? 'rgb(203, 213, 225)' : 'rgb(71, 85, 105)';
+
+    forecastChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: forecastLabels,
+            datasets: [
+                {
+                    label: 'Penjualan Aktual',
+                    data: currentSalesData,
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                },
+                {
+                    label: 'Peramalan Tradisional',
+                    data: traditionalForecast,
+                    borderColor: 'rgb(239, 68, 68)',
+                    borderDash: [5, 5],
+                    tension: 0.3
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { ticks: { color: textColor }, grid: { color: gridColor } },
+                x: { ticks: { color: textColor }, grid: { color: gridColor } }
+            },
+            plugins: { legend: { labels: { color: textColor } } }
+        }
+    });
+
+    document.getElementById('accuracy-traditional').textContent = '78.5';
+    document.getElementById('accuracy-ai').textContent = '-';
+    
+    const applyAiBtn = document.getElementById('apply-ai-btn');
+    const newApplyAiBtn = applyAiBtn.cloneNode(true);
+    applyAiBtn.parentNode.replaceChild(newApplyAiBtn, applyAiBtn);
+    newApplyAiBtn.addEventListener('click', applyAiForecast);
+
+    isForecastChartInitialized = true;
+}
+
+function applyAiForecast() {
+    if (forecastChart.data.datasets.some(d => d.label === 'Peramalan AI')) return;
+
+    const aiForecast = currentSalesData.map(s => s * (1 + (Math.random() - 0.5) * 0.1));
+    
+    forecastChart.data.datasets.push({
+        label: 'Peramalan AI',
+        data: aiForecast,
+        borderColor: 'rgb(16, 185, 129)',
+        backgroundColor: 'rgba(16, 185, 129, 0.1)',
+        fill: true,
+        tension: 0.3
+    });
+    forecastChart.update();
+    document.getElementById('accuracy-ai').textContent = '96.2';
+    this.disabled = true;
+    this.classList.add('opacity-50', 'cursor-not-allowed');
+}
+
+// ... SISA FILE simulation.js TETAP SAMA SEPERTI SEBELUMNYA ...
+
+function setupAutomationTooltips() {
+    const steps = document.querySelectorAll('.automation-step');
+    const tooltip = document.getElementById('automation-tooltip');
+    if (!tooltip) return; // Pengaman
+
+    steps.forEach(step => {
+        step.addEventListener('mouseenter', (event) => {
+            const stepNumber = event.currentTarget.dataset.step;
+            tooltip.textContent = automationSteps[stepNumber];
+            tooltip.classList.remove('hidden');
+        });
+        
+        step.addEventListener('mousemove', (event) => {
+            tooltip.style.left = `${event.pageX + 15}px`;
+            tooltip.style.top = `${event.pageY + 15}px`;
+        });
+
+        step.addEventListener('mouseleave', () => {
+            tooltip.classList.add('hidden');
+        });
+    });
+}
+async function handleFileUpload(file) {
+    if (!file) {
+        alert("Silakan pilih file terlebih dahulu.");
+        return;
+    }
+    const formData = new FormData();
+    formData.append('vendorFile', file);
+    try {
+        const response = await fetch(`${API_URL_BASE}/upload`, { method: 'POST', body: formData });
+        const result = await response.json();
+        if (result.success) {
+            alert('File berhasil diunggah! Memproses data...');
+            await loadHistory();
+            await loadDataFromFile(result.fileName);
+        } else { throw new Error(result.message); }
+    } catch (error) {
+        console.error('Error uploading file:', error);
+        alert('Gagal mengunggah file. Pastikan server backend berjalan.');
+    }
+}
+export async function loadHistory() {
+    const list = document.getElementById('history-list');
+    if (!list) return;
+    list.innerHTML = `<p class="text-sm text-slate-500">Memuat riwayat...</p>`;
+    try {
+        const response = await fetch(`${API_URL_BASE}/history`);
+        if (!response.ok) throw new Error('Gagal terhubung ke server.');
+        const files = await response.json();
+        if (files.length === 0) {
+            list.innerHTML = `<p class="text-sm text-slate-500">Belum ada riwayat unggahan.</p>`;
+        } else {
+            list.innerHTML = files.map(file => `<a href="#" data-file-name="${file}" class="block text-sm text-blue-600 dark:text-blue-400 hover:underline truncate">${file}</a>`).join('');
+        }
+    } catch (error) {
+        console.error('Error loading history:', error);
+        list.innerHTML = `<p class="text-sm text-red-500">Gagal memuat riwayat. Pastikan server backend berjalan.</p>`;
+    }
+}
+async function loadDataFromFile(fileName) {
+    try {
+        const response = await fetch(`${API_URL_BASE}/data/${fileName}`);
+        if (!response.ok) throw new Error('File tidak ditemukan di server.');
+        const blob = await response.blob();
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            try {
+                const data = e.target.result;
+                let parsedData;
+                if (fileName.endsWith('.csv')) {
+                    const parseResult = Papa.parse(data, { header: true, skipEmptyLines: true });
+                    if (parseResult.errors.length > 0) {
+                        console.error("CSV Parsing Errors:", parseResult.errors);
+                        throw new Error("Gagal mem-parsing file CSV. Periksa format file.");
+                    }
+                    parsedData = parseResult.data;
+                } else if (fileName.endsWith('.xlsx')) {
+                    const workbook = XLSX.read(data, { type: 'binary' });
+                    const sheetName = workbook.SheetNames[0];
+                    const sheet = workbook.Sheets[sheetName];
+                    parsedData = XLSX.utils.sheet_to_json(sheet);
+                }
+                activeSessionFile = fileName;
+                processVendorData(parsedData);
+            } catch (processingError) {
+                 console.error('Error processing file content:', processingError);
+                 alert(`Terjadi kesalahan saat memproses file: ${processingError.message}`);
+            }
+        };
+        if (fileName.endsWith('.csv')) reader.readAsText(blob);
+        else reader.readAsBinaryString(blob);
+    } catch (error) {
+        console.error('Error loading data file:', error);
+        alert(`Gagal memuat data dari file: ${fileName}. Pastikan server backend berjalan.`);
+    }
+}
 function processVendorData(rawData) {
     try {
         if (!rawData || rawData.length === 0) {
@@ -321,101 +439,4 @@ function updateDashboard() {
 }
 function vendorWidgetHTML(vendor) {
     return `<div class="flex justify-between items-center text-sm p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><span class="font-medium text-slate-700 dark:text-slate-300">${vendor.name}</span><span class="font-bold text-blue-500">${vendor.score.toFixed(1)}</span></div>`;
-}
-function initForecastChart() {
-    if (isForecastChartInitialized) return;
-    const ctx = document.getElementById('forecastChart');
-    if (!ctx) return;
-
-    if (forecastChart) forecastChart.destroy();
-
-    const traditionalForecast = currentSalesData.map(s => s * (1 + (Math.random() - 0.5) * 0.4));
-    const forecastLabels = Array.from({ length: currentSalesData.length }, (_, i) => `Periode ${i + 1}`);
-
-    const gridColor = document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)';
-    const textColor = document.documentElement.classList.contains('dark') ? 'rgb(203, 213, 225)' : 'rgb(71, 85, 105)';
-
-    forecastChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: forecastLabels,
-            datasets: [
-                {
-                    label: 'Penjualan Aktual',
-                    data: currentSalesData,
-                    borderColor: 'rgb(59, 130, 246)',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    fill: true,
-                    tension: 0.3
-                },
-                {
-                    label: 'Peramalan Tradisional',
-                    data: traditionalForecast,
-                    borderColor: 'rgb(239, 68, 68)',
-                    borderDash: [5, 5],
-                    tension: 0.3
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: { ticks: { color: textColor }, grid: { color: gridColor } },
-                x: { ticks: { color: textColor }, grid: { color: gridColor } }
-            },
-            plugins: { legend: { labels: { color: textColor } } }
-        }
-    });
-
-    document.getElementById('accuracy-traditional').textContent = '78.5';
-    document.getElementById('accuracy-ai').textContent = '-';
-    
-    const applyAiBtn = document.getElementById('apply-ai-btn');
-    const newApplyAiBtn = applyAiBtn.cloneNode(true);
-    applyAiBtn.parentNode.replaceChild(newApplyAiBtn, applyAiBtn);
-    newApplyAiBtn.addEventListener('click', applyAiForecast);
-
-    isForecastChartInitialized = true;
-}
-
-function applyAiForecast() {
-    if (forecastChart.data.datasets.some(d => d.label === 'Peramalan AI')) return;
-
-    const aiForecast = currentSalesData.map(s => s * (1 + (Math.random() - 0.5) * 0.1));
-    
-    forecastChart.data.datasets.push({
-        label: 'Peramalan AI',
-        data: aiForecast,
-        borderColor: 'rgb(16, 185, 129)',
-        backgroundColor: 'rgba(16, 185, 129, 0.1)',
-        fill: true,
-        tension: 0.3
-    });
-    forecastChart.update();
-    document.getElementById('accuracy-ai').textContent = '96.2';
-    this.disabled = true;
-    this.classList.add('opacity-50', 'cursor-not-allowed');
-}
-function setupAutomationTooltips() {
-    const steps = document.querySelectorAll('.automation-step');
-    const tooltip = document.getElementById('automation-tooltip');
-    if (!tooltip) return;
-
-    steps.forEach(step => {
-        step.addEventListener('mouseenter', (event) => {
-            const stepNumber = event.currentTarget.dataset.step;
-            tooltip.textContent = automationSteps[stepNumber];
-            tooltip.classList.remove('hidden');
-        });
-        
-        step.addEventListener('mousemove', (event) => {
-            tooltip.style.left = `${event.pageX + 15}px`;
-            tooltip.style.top = `${event.pageY + 15}px`;
-        });
-
-        step.addEventListener('mouseleave', () => {
-            tooltip.classList.add('hidden');
-        });
-    });
 }
