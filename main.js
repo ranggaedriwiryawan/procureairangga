@@ -1,5 +1,5 @@
 // main.js
-import { initSimulation, loadHistory } from './simulation.js';
+import { initSimulation, loadHistory, handleTabClick } from './simulation.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const API_URL = 'http://localhost:3000'; // URL backend
@@ -65,6 +65,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const contentTabId = content.id.split('-')[1];
             content.classList.toggle('hidden', contentTabId !== tabId);
         });
+
+        // Beri tahu simulation.js tab mana yang aktif
+        handleTabClick(tabId);
     }
 
     navButtons.dashboard.addEventListener('click', (e) => { e.preventDefault(); showPage('dashboard-page'); });
@@ -80,8 +83,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- INISIALISASI ---
-    showPage('dashboard-page'); // Tampilkan Dashboard sebagai halaman utama
-    showTab('vendor'); // Tab default di halaman simulasi
-    initSimulation(API_URL); // Kirim URL API ke modul simulasi
-    loadHistory(API_URL); // Muat riwayat file saat aplikasi dimulai
+    showPage('dashboard-page');
+    showTab('vendor');
+    initSimulation(API_URL);
+    loadHistory(API_URL);
 });
