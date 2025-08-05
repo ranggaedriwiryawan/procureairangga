@@ -33,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- LOGIKA NAVIGASI HALAMAN & TAB (DIPERBAIKI TOTAL) ---
     const pages = document.querySelectorAll('.page');
     const navLinks = document.querySelectorAll('nav a');
+    
     const tabs = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
     const activeTabClasses = ['bg-blue-500', 'text-white'];
@@ -56,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function showTab(tabId) {
         tabs.forEach(tab => {
             const currentTabId = tab.id.split('-')[1];
+            tab.classList.toggle('active', currentTabId === tabId);
             if (currentTabId === tabId) {
                 tab.classList.add(...activeTabClasses);
                 tab.classList.remove(...inactiveTabClasses, 'bg-slate-200', 'dark:bg-slate-800');
