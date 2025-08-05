@@ -2,9 +2,10 @@
 import { initSimulation, loadHistory, handleTabClick } from './simulation.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const API_URL = 'http://localhost:3000'; // URL backend
+    const API_URL = 'http://localhost:3000';
+    let isSimulationInitialized = false; // Penanda untuk mencegah inisialisasi ganda
 
-    // --- LOGIKA DARK MODE --- (tidak berubah)
+    // --- LOGIKA DARK MODE (tidak berubah) ---
     const themeToggle = document.getElementById('theme-toggle');
     const sunIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" /></svg>`;
     const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
@@ -29,13 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setTheme(!document.documentElement.classList.contains('dark'));
     });
 
-    // --- LOGIKA NAVIGASI HALAMAN & TAB (DIPERBARUI) ---
+    // --- LOGIKA NAVIGASI HALAMAN & TAB (DIPERBARUI TOTAL) ---
     const pages = document.querySelectorAll('.page');
-    const navButtons = {
-        dashboard: document.getElementById('nav-dashboard'),
-        simulation: document.getElementById('nav-simulation'),
-        about: document.getElementById('nav-about'),
-    };
+    const navLinks = document.querySelectorAll('nav a');
     
     const tabs = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
@@ -46,12 +43,21 @@ document.addEventListener('DOMContentLoaded', () => {
         pages.forEach(page => {
             page.classList.toggle('hidden', page.id !== pageId);
         });
+
+        // Inisialisasi modul simulasi HANYA saat halamannya ditampilkan pertama kali
+        if (pageId === 'simulation-page' && !isSimulationInitialized) {
+            initSimulation(); // Jalankan semua setup event listener untuk simulasi
+            loadHistory();    // Muat riwayat file
+            isSimulationInitialized = true;
+        }
+
         window.scrollTo(0, 0);
     }
     
     function showTab(tabId) {
         tabs.forEach(tab => {
             const currentTabId = tab.id.split('-')[1];
+            tab.classList.toggle('active', currentTabId === tabId);
             if (currentTabId === tabId) {
                 tab.classList.add(...activeTabClasses);
                 tab.classList.remove(...inactiveTabClasses, 'bg-slate-200', 'dark:bg-slate-800');
@@ -66,15 +72,22 @@ document.addEventListener('DOMContentLoaded', () => {
             content.classList.toggle('hidden', contentTabId !== tabId);
         });
 
-        // Beri tahu simulation.js tab mana yang aktif
-        handleTabClick(tabId);
+        // Beri tahu simulation.js tab mana yang sedang aktif
+        if(isSimulationInitialized) {
+            handleTabClick(tabId);
+        }
     }
 
-    navButtons.dashboard.addEventListener('click', (e) => { e.preventDefault(); showPage('dashboard-page'); });
-    navButtons.simulation.addEventListener('click', (e) => { e.preventDefault(); showPage('simulation-page'); });
-    navButtons.about.addEventListener('click', (e) => { e.preventDefault(); showPage('about-page'); });
-    document.getElementById('nav-dashboard-logo').addEventListener('click', (e) => { e.preventDefault(); showPage('dashboard-page'); });
+    // Setup navigasi utama
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const pageId = e.currentTarget.getAttribute('href').substring(1);
+            showPage(pageId);
+        });
+    });
 
+    // Setup navigasi tab
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             const tabId = tab.id.split('-')[1];
@@ -82,9 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // --- INISIALISASI ---
-    showPage('dashboard-page');
-    showTab('vendor');
-    initSimulation(API_URL);
-    loadHistory(API_URL);
+    // --- INISIALISASI AWAL ---
+    showPage('dashboard-page'); // Halaman default
+    showTab('vendor');         // Tab default
 });
