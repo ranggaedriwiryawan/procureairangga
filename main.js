@@ -2,7 +2,7 @@
 import { initSimulation, loadHistory, handleTabClick } from './simulation.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    // const API_URL = 'http://localhost:3000'; // URL backend TIDAK DIPAKAI LAGI
+    let isSimulationInitialized = false; // Penanda untuk mencegah inisialisasi ganda
 
     // --- LOGIKA DARK MODE (tidak berubah) ---
     const themeToggle = document.getElementById('theme-toggle');
@@ -30,15 +30,13 @@ document.addEventListener('DOMContentLoaded', () => {
         setTheme(!document.documentElement.classList.contains('dark'));
     });
 
-    // --- LOGIKA NAVIGASI HALAMAN & TAB ---
+    // --- LOGIKA NAVIGASI HALAMAN & TAB (DIPERBAIKI) ---
     const pages = document.querySelectorAll('.page');
     const navLinks = document.querySelectorAll('nav a');
-    
     const tabs = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
     const activeTabClasses = ['bg-blue-500', 'text-white'];
     const inactiveTabClasses = ['hover:bg-slate-300', 'dark:hover:bg-slate-600'];
-    let isSimulationInitialized = false;
 
     function showPage(pageId) {
         pages.forEach(page => {
@@ -46,8 +44,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (pageId === 'simulation-page' && !isSimulationInitialized) {
+            console.log("Menampilkan halaman simulasi untuk pertama kali. Menginisialisasi...");
             initSimulation();
-            loadHistory(); // Panggil loadHistory tanpa API_URL
+            loadHistory(); // Panggil loadHistory tanpa parameter
             isSimulationInitialized = true;
         }
         window.scrollTo(0, 0);
@@ -91,6 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- INISIALISASI AWAL ---
-    showPage('dashboard-page'); 
+    showPage('dashboard-page');
     showTab('vendor');
 });
