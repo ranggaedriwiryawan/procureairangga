@@ -2,8 +2,7 @@
 import { initSimulation, loadHistory, handleTabClick } from './simulation.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-    const API_URL = 'http://localhost:3000';
-    let isSimulationInitialized = false; // Penanda untuk mencegah inisialisasi ganda
+    let isSimulationInitialized = false; // Penanda PENTING untuk mencegah inisialisasi ganda
 
     // --- LOGIKA DARK MODE (tidak berubah) ---
     const themeToggle = document.getElementById('theme-toggle');
@@ -11,14 +10,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const moonIcon = `<svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
 
     const setTheme = (isDark) => {
+        const themeIcon = document.getElementById('theme-icon');
         if (isDark) {
             document.documentElement.classList.add('dark');
             localStorage.theme = 'dark';
-            document.getElementById('theme-icon').innerHTML = moonIcon;
+            if(themeIcon) themeIcon.innerHTML = moonIcon;
         } else {
             document.documentElement.classList.remove('dark');
             localStorage.theme = 'light';
-            document.getElementById('theme-icon').innerHTML = sunIcon;
+            if(themeIcon) themeIcon.innerHTML = sunIcon;
         }
     };
     if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -30,10 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
         setTheme(!document.documentElement.classList.contains('dark'));
     });
 
-    // --- LOGIKA NAVIGASI HALAMAN & TAB (DIPERBARUI TOTAL) ---
+    // --- LOGIKA NAVIGASI HALAMAN & TAB (DIPERBAIKI TOTAL) ---
     const pages = document.querySelectorAll('.page');
     const navLinks = document.querySelectorAll('nav a');
-    
     const tabs = document.querySelectorAll('.tab-btn');
     const tabContents = document.querySelectorAll('.tab-content');
     const activeTabClasses = ['bg-blue-500', 'text-white'];
@@ -46,18 +45,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Inisialisasi modul simulasi HANYA saat halamannya ditampilkan pertama kali
         if (pageId === 'simulation-page' && !isSimulationInitialized) {
+            console.log("Menampilkan halaman simulasi untuk pertama kali. Menginisialisasi...");
             initSimulation(); // Jalankan semua setup event listener untuk simulasi
             loadHistory();    // Muat riwayat file
             isSimulationInitialized = true;
         }
-
         window.scrollTo(0, 0);
     }
     
     function showTab(tabId) {
         tabs.forEach(tab => {
             const currentTabId = tab.id.split('-')[1];
-            tab.classList.toggle('active', currentTabId === tabId);
             if (currentTabId === tabId) {
                 tab.classList.add(...activeTabClasses);
                 tab.classList.remove(...inactiveTabClasses, 'bg-slate-200', 'dark:bg-slate-800');
@@ -71,9 +69,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const contentTabId = content.id.split('-')[1];
             content.classList.toggle('hidden', contentTabId !== tabId);
         });
-
-        // Beri tahu simulation.js tab mana yang sedang aktif
-        if(isSimulationInitialized) {
+        
+        // Beri tahu simulation.js tab mana yang sedang aktif, HANYA jika sudah diinisialisasi
+        if (isSimulationInitialized) {
             handleTabClick(tabId);
         }
     }
@@ -97,5 +95,5 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- INISIALISASI AWAL ---
     showPage('dashboard-page'); // Halaman default
-    showTab('vendor');         // Tab default
+    showTab('vendor');         // Tab default (hanya mengatur tampilan, tidak memanggil fungsi)
 });
