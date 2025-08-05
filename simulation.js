@@ -9,9 +9,8 @@ let simulationVendors = [];
 let lastSimulationResult = null;
 let activeSessionFile = 'Tidak ada';
 let forecastChart;
-
-// Variabel baru untuk data peramalan yang dinamis (DIPULIHKAN)
 let currentSalesData = [...defaultHistoricalSales];
+let isForecastChartInitialized = false; // Penanda untuk mencegah render ulang
 
 // --- FUNGSI UTAMA ---
 export function initSimulation() {
@@ -45,8 +44,7 @@ export function initSimulation() {
     });
 
     // Inisialisasi modul lain
-    initForecastChart();
-    setupAutomationTooltips();
+    setupAutomationTooltips(); // Otomatisasi bisa di-init di awal
     document.getElementById('update-forecast-chart-btn').addEventListener('click', updateForecastChartWithUserData);
     
     renderVendorTable();
@@ -54,7 +52,15 @@ export function initSimulation() {
     updateDashboard();
 }
 
-// --- FUNGSI MODUL PERAMALAN (DIPULIHKAN & DIPERBAIKI) ---
+// Fungsi baru yang dipanggil dari main.js
+export function handleTabClick(tabId) {
+    if (tabId === 'forecast' && !isForecastChartInitialized) {
+        initForecastChart();
+        isForecastChartInitialized = true;
+    }
+}
+
+// --- FUNGSI MODUL PERAMALAN (DIPERBAIKI) ---
 function updateForecastChartWithUserData() {
     const userInput = document.getElementById('user-forecast-data').value;
     
@@ -69,15 +75,18 @@ function updateForecastChartWithUserData() {
         currentSalesData = newData;
     }
     
+    isForecastChartInitialized = false; // Reset agar bisa di-render ulang
     initForecastChart();
+    isForecastChartInitialized = true;
 }
 
 function initForecastChart() {
     if (forecastChart) {
         forecastChart.destroy();
     }
-    const ctx = document.getElementById('forecastChart').getContext('2d');
-    
+    const ctx = document.getElementById('forecastChart');
+    if (!ctx) return; // Tambahan pengaman
+
     const traditionalForecast = currentSalesData.map(s => s * (1 + (Math.random() - 0.5) * 0.4));
     const forecastLabels = Array.from({ length: currentSalesData.length }, (_, i) => `Periode ${i + 1}`);
 
@@ -120,12 +129,16 @@ function initForecastChart() {
     document.getElementById('accuracy-ai').textContent = '-';
     
     const applyAiBtn = document.getElementById('apply-ai-btn');
+    // Hapus dan tambahkan ulang event listener untuk mencegah duplikasi
     const newApplyAiBtn = applyAiBtn.cloneNode(true);
     applyAiBtn.parentNode.replaceChild(newApplyAiBtn, applyAiBtn);
-    newApplyAiBtn.addEventListener('click', applyAiForecast, { once: true });
+    newApplyAiBtn.addEventListener('click', applyAiForecast);
 }
 
 function applyAiForecast() {
+    // Cek jika dataset AI sudah ada untuk mencegah penambahan ganda
+    if (forecastChart.data.datasets.some(d => d.label === 'Peramalan AI')) return;
+
     const aiForecast = currentSalesData.map(s => s * (1 + (Math.random() - 0.5) * 0.1));
     
     forecastChart.data.datasets.push({
@@ -142,7 +155,8 @@ function applyAiForecast() {
     this.classList.add('opacity-50', 'cursor-not-allowed');
 }
 
-// --- FUNGSI MODUL OTOMATISASI (DIPULIHKAN) ---
+// ... SISA FILE simulation.js TETAP SAMA SEPERTI SEBELUMNYA ...
+
 function setupAutomationTooltips() {
     const steps = document.querySelectorAll('.automation-step');
     const tooltip = document.getElementById('automation-tooltip');
@@ -165,8 +179,6 @@ function setupAutomationTooltips() {
     });
 }
 
-
-// --- FUNGSI INTERAKSI BACKEND & RIWAYAT ---
 async function handleFileUpload(file) {
     if (!file) {
         alert("Silakan pilih file terlebih dahulu.");
@@ -256,7 +268,6 @@ function processVendorData(rawData) {
         const headerMapping = {};
         const firstRow = rawData[0];
         const actualHeaders = Object.keys(firstRow);
-
         expectedHeaders.forEach(expectedHeader => {
             const foundHeader = actualHeaders.find(actualHeader => actualHeader.trim().toLowerCase() === expectedHeader);
             if (foundHeader) {
@@ -268,7 +279,6 @@ function processVendorData(rawData) {
         const vendorMap = new Map();
         rawData.forEach((row, index) => {
             const vendorName = row[headerMapping['nama vendor']];
-            
             if (!vendorName || !vendorName.trim()) {
                 console.warn(`Melewatkan baris ke-${index + 2} karena Nama Vendor kosong.`);
                 return;
@@ -306,7 +316,6 @@ function processVendorData(rawData) {
         updateDashboard();
     }
 }
-
 function analyzeVendors() {
     if (userVendorData.length === 0) return;
     userVendorData.forEach(vendor => {
@@ -320,7 +329,6 @@ function analyzeVendors() {
     renderVendorTable();
     updateDashboard();
 }
-
 function runSourcingSimulation() {
     const inputs = document.querySelectorAll('.allocation-input');
     let totalAllocation = 0, projectedQuality = 0, projectedOTD = 0;
@@ -345,7 +353,6 @@ function runSourcingSimulation() {
     lastSimulationResult = { projectedQuality, projectedOTD };
     updateDashboard();
 }
-
 function renderVendorTable() {
     const tbody = document.querySelector('#vendorTable tbody');
     tbody.innerHTML = '';
@@ -360,19 +367,16 @@ function renderVendorTable() {
         tbody.appendChild(row);
     });
 }
-
 function calculateOTD(transactions) {
     if (!transactions || transactions.length === 0) return 0;
     const onTime = transactions.filter(t => new Date(t.tglKirimAktual) <= new Date(t.tglKirimJanji)).length;
     return (onTime / transactions.length) * 100;
 }
-
 function calculateQualityRate(transactions) {
     if (!transactions || transactions.length === 0) return 0;
     const passes = transactions.filter(t => t.kualitasLolos).length;
     return (passes / transactions.length) * 100;
 }
-
 function handleVendorSelection(event) {
     if (!event.target.classList.contains('vendor-select-checkbox')) return;
     const vendorName = event.target.dataset.vendorName;
@@ -384,7 +388,6 @@ function handleVendorSelection(event) {
     }
     renderSimulationPanel();
 }
-
 function renderSimulationPanel() {
     const listContainer = document.getElementById('simulation-vendor-list');
     const controlsContainer = document.getElementById('simulation-controls');
@@ -402,7 +405,6 @@ function renderSimulationPanel() {
         controlsContainer.classList.remove('hidden');
     }
 }
-
 function updateDashboard() {
     const kpiAvgScore = document.getElementById('kpi-avg-score');
     const kpiAvgOtd = document.getElementById('kpi-avg-otd');
@@ -435,7 +437,6 @@ function updateDashboard() {
         lastSimContainer.innerHTML = `<p class="font-semibold text-slate-800 dark:text-slate-200">Hasil Proyeksi Gabungan:</p><ul class="list-disc list-inside mt-2 space-y-1 text-sm"><li><span class="font-medium">Kualitas:</span> <span class="font-bold text-green-600 dark:text-green-400">${lastSimulationResult.projectedQuality.toFixed(2)}%</span></li><li><span class="font-medium">OTD:</span> <span class="font-bold text-green-600 dark:text-green-400">${lastSimulationResult.projectedOTD.toFixed(2)}%</span></li></ul>`;
     }
 }
-
 function vendorWidgetHTML(vendor) {
     return `<div class="flex justify-between items-center text-sm p-2 rounded-md hover:bg-slate-100 dark:hover:bg-slate-700"><span class="font-medium text-slate-700 dark:text-slate-300">${vendor.name}</span><span class="font-bold text-blue-500">${vendor.score.toFixed(1)}</span></div>`;
 }
