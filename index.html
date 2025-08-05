@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en" class="">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procurement AI Platform | Portfolio V2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-100 dark:bg-slate-900 text-slate-800 dark:text-slate-200 antialiased">
+
+    <nav class="bg-white/80 dark:bg-slate-900/80 backdrop-blur-lg sticky top-0 z-50 border-b border-slate-200 dark:border-slate-800">
+        <div class="container max-w-7xl mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <a href="#" id="nav-dashboard-logo" class="text-xl font-bold text-slate-900 dark:text-white">ProcureAI.</a>
+                <div class="flex items-center space-x-6">
+                    <div class="hidden md:flex items-center space-x-6">
+                        <a href="#dashboard-page" id="nav-dashboard" class="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-500 transition-colors">Dashboard</a>
+                        <a href="#simulation-page" id="nav-simulation" class="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-500 transition-colors">Platform Simulasi</a>
+                        <a href="#about-page" id="nav-about" class="text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-500 transition-colors">Tentang Platform</a>
+                    </div>
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                        <span id="theme-icon"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main>
+        <section id="dashboard-page" class="page py-12">
+            <div class="container max-w-7xl mx-auto px-4">
+                <h1 class="text-3xl font-bold text-slate-900 dark:text-white mb-6">Dashboard Eksekutif</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Rata-Rata Skor Vendor</h3>
+                        <p id="kpi-avg-score" class="text-4xl font-bold text-blue-500 mt-2">-</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Rata-Rata OTD</h3>
+                        <p id="kpi-avg-otd" class="text-4xl font-bold text-green-500 mt-2">-</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Rata-Rata Kualitas</h3>
+                        <p id="kpi-avg-quality" class="text-4xl font-bold text-yellow-500 mt-2">-</p>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-sm font-medium text-slate-500 dark:text-slate-400">Sesi Data Aktif</h3>
+                        <p id="kpi-active-session" class="text-lg font-bold text-slate-700 dark:text-slate-200 mt-2 truncate">-</p>
+                        <p class="text-xs text-slate-400">Muat data di Platform Simulasi untuk update.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-6">
+                    <div class="lg:col-span-2 bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Ringkasan Performa Vendor</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <h4 class="text-md font-semibold text-green-600 dark:text-green-400 mb-2">Performa Terbaik</h4>
+                                <div id="widget-top-vendors" class="space-y-2"></div>
+                            </div>
+                            <div>
+                                <h4 class="text-md font-semibold text-red-600 dark:text-red-400 mb-2">Perlu Perhatian</h4>
+                                <div id="widget-bottom-vendors" class="space-y-2"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-800 p-6 rounded-xl shadow-lg">
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-4">Ringkasan Simulasi Terakhir</h3>
+                        <div id="widget-last-simulation">
+                            <p class="text-sm text-slate-500 dark:text-slate-400">Jalankan sebuah simulasi di Platform Simulasi untuk melihat hasilnya di sini.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="simulation-page" class="page hidden py-16">
+            <div class="container max-w-7xl mx-auto px-4">
+                <div class="text-center mb-12">
+                     <h2 class="text-3xl font-bold text-slate-900 dark:text-white">Platform Simulasi</h2>
+                    <p class="text-md text-slate-500 dark:text-slate-400 mt-2">Unggah data, jalankan analisis, dan simulasikan strategi sourcing.</p>
+                </div>
+                <div id="simulation-tabs" class="flex justify-center space-x-2 md:space-x-4 p-1 bg-slate-200 dark:bg-slate-800 rounded-full mb-8 max-w-lg mx-auto">
+                    <button id="tab-vendor" class="tab-btn w-full py-2 px-4 rounded-full text-sm font-semibold transition-colors">Analisis & Simulasi Vendor</button>
+                    <button id="tab-forecast" class="tab-btn w-full py-2 px-4 rounded-full text-sm font-semibold transition-colors">Peramalan</button>
+                    <button id="tab-automation" class="tab-btn w-full py-2 px-4 rounded-full text-sm font-semibold transition-colors">Otomatisasi</button>
+                </div>
+
+                <div id="simulation-content" class="bg-white dark:bg-slate-800/50 p-6 sm:p-8 rounded-2xl shadow-xl min-h-[500px]">
+                    
+                    <div id="tab-vendor-content" class="tab-content hidden">
+                        <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Modul Analisis & Simulasi Sourcing Strategis</h3>
+                        <div class="flex flex-col lg:flex-row gap-8">
+                            <div class="flex-grow lg:w-2/3">
+                                <div id="history-panel" class="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-6">
+                                    <h4 class="text-md font-semibold text-slate-800 dark:text-slate-200 mb-2">Muat Analisis dari Riwayat</h4>
+                                    <div id="history-list" class="space-y-2 max-h-32 overflow-y-auto">
+                                        <p class="text-sm text-slate-500">Memuat riwayat...</p>
+                                    </div>
+                                </div>
+                                <div class="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-6">
+                                    <h4 class="text-md font-semibold text-slate-800 dark:text-slate-200 mb-2">Atau, Unggah File Baru</h4>
+                                    <input type="file" id="vendor-file-input" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                    <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">File harus berisi: 'Nama Vendor', 'Tgl Pesan', 'Tgl Kirim Janji', 'Tgl Kirim Aktual', 'Kualitas Lolos', 'Harga'.</p>
+                                </div>
+                                <h4 class="text-md font-semibold text-slate-800 dark:text-slate-200 mb-2">Jalankan Analisis & Pilih Vendor</h4>
+                                <div class="overflow-x-auto mb-4">
+                                    <table id="vendorTable" class="w-full text-left">
+                                        <thead class="bg-slate-100 dark:bg-slate-700">
+                                            <tr>
+                                                <th class="p-3 w-8 text-sm font-semibold text-slate-600 dark:text-slate-300 rounded-tl-lg">Pilih</th>
+                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Nama Vendor</th>
+                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">OTD</th>
+                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300">Kualitas</th>
+                                                <th class="p-3 text-sm font-semibold text-slate-600 dark:text-slate-300 rounded-tr-lg">Skor AI</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="divide-y divide-slate-200 dark:divide-slate-700"></tbody>
+                                    </table>
+                                    <p id="vendor-table-placeholder" class="text-center py-8 text-slate-500 dark:text-slate-400">Belum ada data. Unggah file atau muat dari riwayat.</p>
+                                </div>
+                                <button id="analyze-vendor-btn" class="w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Analisis & Beri Peringkat Vendor</button>
+                            </div>
+                            <div id="simulation-panel" class="lg:w-1/3 bg-slate-100 dark:bg-slate-700/50 p-6 rounded-lg">
+                                <h4 class="text-md font-semibold text-slate-800 dark:text-slate-200 mb-4 border-b pb-2 border-slate-300 dark:border-slate-600">Simulasi Alokasi Sourcing</h4>
+                                <div id="simulation-vendor-list" class="space-y-4 mb-4">
+                                    <p class="text-sm text-center text-slate-500 dark:text-slate-400 py-8">Pilih vendor dari tabel untuk memulai simulasi.</p>
+                                </div>
+                                <div id="simulation-controls" class="hidden">
+                                    <button id="run-simulation-btn" class="w-full bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Jalankan Simulasi</button>
+                                    <div id="simulation-results" class="mt-4 text-sm"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div id="tab-forecast-content" class="tab-content hidden">
+                        <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Dashboard Peramalan Permintaan</h3>
+                        
+                        <div class="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-6">
+                            <h4 class="text-md font-semibold text-slate-800 dark:text-slate-200 mb-2">Input Data Penjualan Anda</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Masukkan data penjualan historis (pisahkan dengan koma), atau biarkan kosong untuk menggunakan data simulasi default.</p>
+                            <div class="flex items-start space-x-2">
+                                <textarea id="user-forecast-data" rows="3" class="flex-grow mt-1 block w-full px-3 py-2 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm" placeholder="210, 230, 250, 280, ..."></textarea>
+                                <button id="update-forecast-chart-btn" class="bg-blue-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors self-end">Update Grafik</button>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                            <div class="lg:col-span-2 min-h-[400px]"><canvas id="forecastChart"></canvas></div>
+                            <div class="flex flex-col justify-center space-y-4">
+                                <div class="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg">
+                                    <p class="text-sm text-slate-500 dark:text-slate-300">Akurasi Tradisional</p>
+                                    <p class="text-2xl font-bold text-red-500"><span id="accuracy-traditional">-</span>%</p>
+                                </div>
+                                <div class="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg">
+                                    <p class="text-sm text-slate-500 dark:text-slate-300">Akurasi AI</p>
+                                    <p class="text-2xl font-bold text-green-500"><span id="accuracy-ai">-</span>%</p>
+                                </div>
+                                <button id="apply-ai-btn" class="w-full bg-blue-500 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-600 transition-colors">Terapkan Peramalan AI</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-automation-content" class="tab-content hidden">
+                         <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-8 text-center">Visualisasi Otomatisasi Proses Procurement</h3>
+                         <div class="relative">
+                             <div id="automation-tooltip" class="hidden absolute z-10 p-2 text-xs text-white bg-slate-900 dark:bg-slate-700 rounded-md shadow-lg"></div>
+                             <div class="flex items-center justify-between space-x-2 max-w-4xl mx-auto">
+                                 <div data-step="1" class="automation-step flex flex-col items-center text-center w-24 cursor-pointer group">
+                                     <div class="w-16 h-16 flex items-center justify-center bg-slate-200 dark:bg-slate-700 rounded-full group-hover:bg-blue-500 transition-colors">
+                                         <svg class="w-8 h-8 text-slate-500 dark:text-slate-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+                                     </div><p class="text-xs mt-2 font-semibold">Permintaan</p>
+                                 </div>
+                                 <div class="flex-grow border-t-2 border-dashed border-slate-300 dark:border-slate-600"></div>
+                                 <div data-step="2" class="automation-step flex flex-col items-center text-center w-24 cursor-pointer group">
+                                      <div class="w-16 h-16 flex items-center justify-center bg-slate-200 dark:bg-slate-700 rounded-full group-hover:bg-blue-500 transition-colors">
+                                         <svg class="w-8 h-8 text-slate-500 dark:text-slate-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                     </div><p class="text-xs mt-2 font-semibold">Persetujuan</p>
+                                 </div>
+                                 <div class="flex-grow border-t-2 border-dashed border-slate-300 dark:border-slate-600"></div>
+                                 <div data-step="3" class="automation-step flex flex-col items-center text-center w-24 cursor-pointer group">
+                                     <div class="w-16 h-16 flex items-center justify-center bg-slate-200 dark:bg-slate-700 rounded-full group-hover:bg-blue-500 transition-colors">
+                                         <svg class="w-8 h-8 text-slate-500 dark:text-slate-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                     </div><p class="text-xs mt-2 font-semibold">Pemilihan Vendor</p>
+                                 </div>
+                                 <div class="flex-grow border-t-2 border-dashed border-slate-300 dark:border-slate-600"></div>
+                                <div data-step="4" class="automation-step flex flex-col items-center text-center w-24 cursor-pointer group">
+                                     <div class="w-16 h-16 flex items-center justify-center bg-slate-200 dark:bg-slate-700 rounded-full group-hover:bg-blue-500 transition-colors">
+                                         <svg class="w-8 h-8 text-slate-500 dark:text-slate-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                     </div><p class="text-xs mt-2 font-semibold">Pembuatan PO</p>
+                                 </div>
+                                 <div class="flex-grow border-t-2 border-dashed border-slate-300 dark:border-slate-600"></div>
+                                 <div data-step="5" class="automation-step flex flex-col items-center text-center w-24 cursor-pointer group">
+                                     <div class="w-16 h-16 flex items-center justify-center bg-slate-200 dark:bg-slate-700 rounded-full group-hover:bg-blue-500 transition-colors">
+                                        <svg class="w-8 h-8 text-slate-500 dark:text-slate-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10l2-2h8a1 1 0 001-1z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9h2.586a1 1 0 01.707.293l2.414 2.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1v-4a1 1 0 011-1h2a1 1 0 011 1v4m-6 0h6"></path></svg>
+                                     </div><p class="text-xs mt-2 font-semibold">Penerimaan Barang</p>
+                                 </div>
+                                 <div class="flex-grow border-t-2 border-dashed border-slate-300 dark:border-slate-600"></div>
+                                 <div data-step="6" class="automation-step flex flex-col items-center text-center w-24 cursor-pointer group">
+                                     <div class="w-16 h-16 flex items-center justify-center bg-slate-200 dark:bg-slate-700 rounded-full group-hover:bg-blue-500 transition-colors">
+                                        <svg class="w-8 h-8 text-slate-500 dark:text-slate-300 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                                     </div><p class="text-xs mt-2 font-semibold">Pembayaran</p>
+                                 </div>
+                             </div>
+                         </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <section id="about-page" class="page hidden py-16 bg-white dark:bg-slate-800/50">
+             <div class="container max-w-4xl mx-auto px-4 text-center">
+                <h2 class="text-3xl font-bold text-slate-900 dark:text-white">Tentang Platform</h2>
+                <p class="mt-4 text-slate-600 dark:text-slate-300">Platform ini merupakan gabungan studi kasus, simulasi, dan dashboard analitik untuk proses procurement modern. Dibangun dengan Vanilla JS, Tailwind CSS, dan Chart.js, platform ini mendemonstrasikan keahlian dalam:</p>
+                <ul class="mt-6 text-left max-w-md mx-auto space-y-2">
+                    <li class="flex items-start"><span class="text-blue-500 mr-2">&#10003;</span> Analisis Vendor berbasis AI untuk optimasi pemilihan.</li>
+                    <li class="flex items-start"><span class="text-blue-500 mr-2">&#10003;</span> Peramalan permintaan dengan metode tradisional & AI untuk efisiensi.</li>
+                    <li class="flex items-start"><span class="text-blue-500 mr-2">&#10003;</span> Visualisasi otomatisasi proses procurement untuk transparansi.</li>
+                </ul>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="border-t border-slate-200 dark:border-slate-800">
+       <div class="container max-w-7xl mx-auto px-4 py-6 text-center text-sm text-slate-500 dark:text-slate-400">
+            <p>&copy; 2024 Dibuat sebagai Portofolio Interaktif.</p>
+        </div>
+    </footer>
+
+    <script type="module" src="./main.js"></script>
+</body>
+</html>
