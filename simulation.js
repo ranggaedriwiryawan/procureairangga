@@ -72,14 +72,13 @@ function updateForecastChartWithUserData() {
         currentSalesData = newData;
     }
     
-    // Hancurkan chart lama dan render ulang
     if (forecastChart) forecastChart.destroy();
     isForecastChartInitialized = false; // Izinkan render ulang saat tab diklik
     initForecastChart();
 }
 
 function initForecastChart() {
-    if (isForecastChartInitialized) return; // Jangan render jika sudah ada
+    if (isForecastChartInitialized) return;
 
     const ctx = document.getElementById('forecastChart');
     if (!ctx) return;
@@ -156,11 +155,11 @@ function applyAiForecast() {
 }
 
 // ... SISA FILE simulation.js TETAP SAMA SEPERTI SEBELUMNYA ...
-// (Fungsi setupAutomationTooltips, handleFileUpload, loadHistory, loadDataFromFile, processVendorData, dll.)
 
 function setupAutomationTooltips() {
     const steps = document.querySelectorAll('.automation-step');
     const tooltip = document.getElementById('automation-tooltip');
+    if (!tooltip) return; // Pengaman
 
     steps.forEach(step => {
         step.addEventListener('mouseenter', (event) => {
@@ -199,9 +198,9 @@ async function handleFileUpload(file) {
         alert('Gagal mengunggah file. Pastikan server backend berjalan.');
     }
 }
-
 export async function loadHistory() {
     const list = document.getElementById('history-list');
+    if (!list) return;
     list.innerHTML = `<p class="text-sm text-slate-500">Memuat riwayat...</p>`;
     try {
         const response = await fetch(`${API_URL_BASE}/history`);
