@@ -72,13 +72,14 @@ function updateForecastChartWithUserData() {
         currentSalesData = newData;
     }
     
+    // Hancurkan chart lama dan render ulang
     if (forecastChart) forecastChart.destroy();
     isForecastChartInitialized = false; // Izinkan render ulang saat tab diklik
     initForecastChart();
 }
 
 function initForecastChart() {
-    if (isForecastChartInitialized) return;
+    if (isForecastChartInitialized) return; // Jangan render jika sudah ada
 
     const ctx = document.getElementById('forecastChart');
     if (!ctx) return;
