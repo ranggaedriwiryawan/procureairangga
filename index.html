@@ -107,7 +107,10 @@
                                 </div>
                                 <div class="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-6">
                                     <h4 class="text-md font-semibold text-slate-800 dark:text-slate-200 mb-2">Atau, Unggah File Baru</h4>
-                                    <input type="file" id="vendor-file-input" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                    <div class="flex items-center space-x-4">
+                                        <input type="file" id="vendor-file-input" accept=".csv, .xlsx" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"/>
+                                        <button id="upload-file-btn" class="hidden bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors">Kirim File</button>
+                                    </div>
                                     <p class="mt-1 text-xs text-slate-500 dark:text-slate-400">File harus berisi: 'Nama Vendor', 'Tgl Pesan', 'Tgl Kirim Janji', 'Tgl Kirim Aktual', 'Kualitas Lolos', 'Harga'.</p>
                                 </div>
                                 <h4 class="text-md font-semibold text-slate-800 dark:text-slate-200 mb-2">Jalankan Analisis & Pilih Vendor</h4>
@@ -143,7 +146,6 @@
                     
                     <div id="tab-forecast-content" class="tab-content hidden">
                         <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-4">Dashboard Peramalan Permintaan</h3>
-                        
                         <div class="bg-slate-100 dark:bg-slate-700/50 p-4 rounded-lg mb-6">
                             <h4 class="text-md font-semibold text-slate-800 dark:text-slate-200 mb-2">Input Data Penjualan Anda</h4>
                             <p class="text-sm text-slate-500 dark:text-slate-400 mb-3">Masukkan data penjualan historis (pisahkan dengan koma), atau biarkan kosong untuk menggunakan data simulasi default.</p>
